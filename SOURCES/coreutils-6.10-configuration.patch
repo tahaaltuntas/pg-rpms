@@ -115,11 +115,11 @@ diff -urNp coreutils-8.21-orig/gnulib-tests/gnulib.mk coreutils-8.21/gnulib-test
  
 -TESTS += test-utimens
 -check_PROGRAMS += test-utimens
--test_utimens_LDADD = $(LDADD) $(LIB_CLOCK_GETTIME) @LIBINTL@
+-test_utimens_LDADD = $(LDADD) $(LIB_CLOCK_GETTIME) $(LIB_NANOSLEEP) @LIBINTL@
 -EXTRA_DIST += nap.h test-futimens.h test-lutimens.h test-utimens.h test-utimens-common.h test-utimens.c macros.h
 +#TESTS += test-utimens
 +#check_PROGRAMS += test-utimens
-+#test_utimens_LDADD = $(LDADD) $(LIB_CLOCK_GETTIME) @LIBINTL@
++#test_utimens_LDADD = $(LDADD) $(LIB_CLOCK_GETTIME) $(LIB_NANOSLEEP) @LIBINTL@
 +#EXTRA_DIST += nap.h test-futimens.h test-lutimens.h test-utimens.h test-utimens-common.h test-utimens.c macros.h
  
  ## end   gnulib module utimens-tests
@@ -136,8 +136,8 @@ diff -urNp coreutils-8.21-orig/tests/local.mk coreutils-8.21/tests/local.mk
    tests/touch/now-owned-by-other.sh
  
 @@ -163,7 +164,6 @@ all_tests =					\
-   tests/rm/cycle.sh				\
    tests/cp/link-heap.sh				\
+   tests/cp/no-ctx.sh				\
    tests/misc/tty-eof.pl				\
 -  tests/tail-2/inotify-hash-abuse.sh		\
    tests/tail-2/inotify-hash-abuse2.sh		\

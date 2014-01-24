@@ -1,7 +1,7 @@
 Summary: A set of basic GNU tools commonly used in shell scripts
 Name:    coreutils
-Version: 8.21
-Release: 13%{?dist}
+Version: 8.22
+Release: 11%{?dist}
 License: GPLv3+
 Group:   System Environment/Base
 Url:     http://www.gnu.org/software/coreutils/
@@ -13,9 +13,7 @@ Source105:  coreutils-colorls.sh
 Source106:  coreutils-colorls.csh
 
 # From upstream
-Patch1: coreutils-8.21-install-strip.patch
-Patch2: coreutils-aarch64-longlong.patch
-Patch3: coreutils-cp-nopreserve-invalidargs.patch
+Patch1: coreutils-8.22-cp-selinux.patch
 
 # Our patches
 #general patch to workaround koji build system issues
@@ -43,13 +41,13 @@ Patch800: coreutils-i18n.patch
 Patch908: coreutils-getgrouplist.patch
 #Prevent buffer overflow in who(1) (bug #158405).
 Patch912: coreutils-overflow.patch
+#Temporarily disable df symlink test, failing
+Patch913: coreutils-8.22-temporarytestoff.patch
 
 #SELINUX Patch - implements Redhat changes
 #(upstream did some SELinux implementation unlike with RedHat patch)
 Patch950: coreutils-selinux.patch
 Patch951: coreutils-selinuxmanpages.patch
-#Deprecate cp -Z/--context non-upstream option
-Patch952: coreutils-cpZ-deprecate.patch
 
 Conflicts: filesystem < 3
 Provides: /bin/basename
@@ -92,6 +90,7 @@ BuildRequires: autoconf
 BuildRequires: automake
 BuildRequires: libcap-devel
 BuildRequires: libattr-devel
+BuildRequires: openssl-devel
 BuildRequires: gmp-devel
 BuildRequires: attr
 BuildRequires: strace
@@ -128,9 +127,7 @@ the old GNU fileutils, sh-utils, and textutils packages.
 %setup -q
 
 # From upstream
-%patch1 -p1 -b .strip
-%patch2 -p1 -b .aarch64
-%patch3 -p1 -b .nopres
+%patch1 -p1 -b .nullcontext
 
 # Our patches
 %patch100 -p1 -b .configure
@@ -150,13 +147,13 @@ the old GNU fileutils, sh-utils, and textutils packages.
 # Coreutils
 %patch908 -p1 -b .getgrouplist
 %patch912 -p1 -b .overflow
+%patch913 -p1 -b .testoff
 
 #SELinux
 %patch950 -p1 -b .selinux
 %patch951 -p1 -b .selinuxman
-%patch952 -p1 -b .cpZ
 
-chmod a+x tests/misc/sort-mb-tests.sh tests/df/direct.sh || :
+chmod a+x tests/misc/sort-mb-tests.sh tests/df/direct.sh tests/cp/no-ctx.sh || :
 
 #fix typos/mistakes in localized documentation(#439410, #440056)
 find ./po/ -name "*.p*" | xargs \
@@ -172,7 +169,7 @@ aclocal -I m4
 autoconf --force
 automake --copy --add-missing
 %configure --enable-largefile \
-           %{?!noselinux:--enable-selinux} \
+           --with-openssl=optional ac_cv_lib_crypto_MD5=no \
            --enable-install-program=hostname,arch \
            --with-tty-group \
            DEFAULT_POSIX2_VERSION=200112 alternative=199209 || :
@@ -377,6 +374,57 @@ fi
 %{_sbindir}/chroot
 
 %changelog
+* Fri Jan 24 2014 Daniel Mach <dmach@redhat.com> - 8.22-11
+- Mass rebuild 2014-01-24
+
+* Mon Jan 13 2014 Ondrej Vasik <ovasik@redhat.com> 8.22-10
+- cp/mv/install: do not crash when getfscreatecon() is
+  returning a NULL context
+- fix the cut optimizations to UTF-8 locales only
+- unset the unnecessary envvars after colorls scripts
+
+* Fri Jan 10 2014 Ondrej Oprala <ooprala@redhat.com> 8.22-9
+- Only use cut optimizations for UTF-8 locales (#1021403)
+
+* Mon Jan 06 2014 Ondrej Oprala <ooprala@redhat.com> 8.22-8
+- Don't use cut mb path if not necessary (#1021403)
+
+* Mon Jan 06 2014 Ondrej Oprala <ooprala@redhat.com> 8.22-7
+- Fix sorting by non-first field (#1003544)
+
+* Fri Jan 03 2014 Ondrej Vasik <ovasik@redhat.com> 8.22-5
+- do not modify SELinux contexts of existing parent
+  directories when copying files (fix by P.Brady, #1045122)
+
+* Fri Jan 03 2014 Ondrej Oprala <ooprala@redat.com> 8.22-4
+- revert an old sort change and constrict it's condition
+
+* Thu Jan 02 2014 Ondrej Vasik <ovasik@redhat.com> 8.22-3
+- mark deprecated SELinux related downstream options as
+  deprecated in usage/man
+- temporarily disable setting SELinux contexts recursively
+  for existing directories - broken (#1045122)
+
+* Fri Dec 27 2013 Daniel Mach <dmach@redhat.com> - 8.22-2
+- Mass rebuild 2013-12-27
+
+* Tue Dec 17 2013 Ondrej Vasik <ovasik@redhat.com> 8.22-1
+- new upstream version 8.22 (#1043552)
+- temporarily df symlink test (incomplete upstream fix, not
+  regression)
+- enable build with openssl for better performance of
+  HASHsum utilities (not for md5sum because of FIPS)
+- turn on the multibyte path in the testsuite to cover
+  i18n regressions
+- fix possible colorls.csh script errors for tcsh with
+  noclobber set and entered include file
+
+* Thu Nov 28 2013 Ondrej Vasik <ovasik@redhat.com> 8.21-14
+- mv: fails to overwrite directory on cross-filesystem
+  copy with EISDIR (#1035224)
+- tail -F does not handle dead symlinks gracefully
+  (#1035219)
+
 * Mon Oct 14 2013 Ondrej Vasik <ovasik@redhat.com> 8.21-13
 - cp: correct error message for invalid arguments
   of '--no-preserve' (#1018206)

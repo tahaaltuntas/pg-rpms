@@ -1,3 +1,6 @@
+# skip everything for non-interactive shells
+if (! $?prompt) exit
+
 # color-ls initialization
 if ( $?USER_LS_COLORS ) then
   if ( "$USER_LS_COLORS" != "" ) then
@@ -33,7 +36,7 @@ if ( ! -e "$COLORS" ) exit
 
 set _tmp="`mktemp .colorlsXXX --tmpdir=/tmp`"
 
-if ( "$INCLUDE" != '' ) cat "$INCLUDE" > $_tmp
+if ( "$INCLUDE" != '' ) cat "$INCLUDE" >> $_tmp
 grep -v '^INCLUDE' "$COLORS" >> $_tmp
 
 eval "`dircolors -c $_tmp`"
@@ -48,6 +51,8 @@ if ( "$color_none" != '' ) then
 endif
 unset color_none
 unset _tmp
+unset INCLUDE
+unset COLORS
 
 finish:
 alias ll 'ls -l --color=auto'
