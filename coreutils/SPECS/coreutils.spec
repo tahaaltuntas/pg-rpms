@@ -126,6 +126,9 @@ Requires: util-linux >= 2.22.1-3
 These are the GNU core utilities.  This package is the combination of
 the old GNU fileutils, sh-utils, and textutils packages.
 
+%define __os_install_post %{nil}
+%define debug_package %{nil}
+
 %prep
 %setup -q
 
@@ -165,7 +168,7 @@ find ./po/ -name "*.p*" | xargs \
  -e 's/-dpR/-cdpR/'
 
 %build
-export CFLAGS="$RPM_OPT_FLAGS -fno-strict-aliasing -fpic"
+export CFLAGS="$RPM_OPT_FLAGS -fno-strict-aliasing -fpic -pg -g"
 %{expand:%%global optflags %{optflags} -D_GNU_SOURCE=1}
 #autoreconf -i -v
 touch aclocal.m4 configure config.hin Makefile.in */Makefile.in
@@ -187,7 +190,7 @@ make all %{?_smp_mflags}
 sed -i -e 's,/etc/utmp,/var/run/utmp,g;s,/etc/wtmp,/var/run/wtmp,g' doc/coreutils.texi
 
 %check
-make check
+#make check
 
 %install
 make DESTDIR=$RPM_BUILD_ROOT install
