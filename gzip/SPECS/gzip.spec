@@ -1,7 +1,7 @@
 Summary: The GNU data compression program
 Name: gzip
 Version: 1.5
-Release: 7%{?dist}
+Release: 8%{?dist}
 # info pages are under GFDL license
 License: GPLv3+ and GFDL
 Group: Applications/File
@@ -38,6 +38,9 @@ program. Gzipped files have a .gz extension.
 Gzip should be installed on your system, because it is a
 very commonly used data compression program.
 
+%define __os_install_post %{nil}
+%define debug_package %{nil}
+
 %prep
 %setup -q
 %patch0 -p1 -b .owl-tmp
@@ -50,8 +53,9 @@ very commonly used data compression program.
 %patch9 -p1 -b .nonblock
 
 %build
+export CFLAGS="-pg -g"
 export DEFS="NO_ASM"
-export CPPFLAGS="-DHAVE_LSTAT"
+export CPPFLAGS="-DHAVE_LSTAT -pg -g"
 %configure 
 
 make
