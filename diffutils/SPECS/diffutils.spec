@@ -28,6 +28,8 @@ to merge two files interactively.
 
 Install diffutils if you need to compare text files.
 
+%define __os_install_post %{nil}
+%define debug_package  %{nil}
 %prep
 %setup -q
 # For 'cmp -s', compare file sizes only if both non-zero (bug #563618).
@@ -39,6 +41,7 @@ Install diffutils if you need to compare text files.
 %patch4 -p1 -b .i18n
 
 %build
+export CFLAGS=" -pg -g "
 %configure
 make PR_PROGRAM=%{_bindir}/pr
 
@@ -68,7 +71,7 @@ rm -rf $RPM_BUILD_ROOT
 %doc COPYING NEWS README
 %{_bindir}/*
 %{_mandir}/*/*
-%{_infodir}/diffutils.info*gz
+%{_infodir}/diffutils.info
 
 %changelog
 * Fri Jan 24 2014 Daniel Mach <dmach@redhat.com> - 3.3-4
