@@ -1,7 +1,7 @@
 Summary: A set of basic GNU tools commonly used in shell scripts
 Name:    coreutils
 Version: 8.22
-Release: 11%{?dist}
+Release: 12%{?dist}
 License: GPLv3+
 Group:   System Environment/Base
 Url:     http://www.gnu.org/software/coreutils/
@@ -48,6 +48,9 @@ Patch913: coreutils-8.22-temporarytestoff.patch
 #(upstream did some SELinux implementation unlike with RedHat patch)
 Patch950: coreutils-selinux.patch
 Patch951: coreutils-selinuxmanpages.patch
+
+# corrects dd sparse test failure
+Patch1000: coreutils-8.22-dd-sparsetest-xfsspeculativeprealloc.patch
 
 Conflicts: filesystem < 3
 Provides: /bin/basename
@@ -152,6 +155,7 @@ the old GNU fileutils, sh-utils, and textutils packages.
 #SELinux
 %patch950 -p1 -b .selinux
 %patch951 -p1 -b .selinuxman
+%patch1000 -p1 -b .xfs
 
 chmod a+x tests/misc/sort-mb-tests.sh tests/df/direct.sh tests/cp/no-ctx.sh || :
 
@@ -374,6 +378,9 @@ fi
 %{_sbindir}/chroot
 
 %changelog
+* Mon Jan 26 2015 Taha Altuntas <taha.altuntas@redhat.com> - 8.22-12
+- fixed sparse tests.
+
 * Fri Jan 24 2014 Daniel Mach <dmach@redhat.com> - 8.22-11
 - Mass rebuild 2014-01-24
 
