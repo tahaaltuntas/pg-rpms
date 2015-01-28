@@ -20,6 +20,8 @@ errors in the code. Cppcheck primarily detects the types of bugs that
 the compilers normally do not detect. The goal is to detect only real
 errors in the code (i.e. have zero false positives).
 
+%define __os_install_post %{nil}
+%define debug_package %{nil}
 
 %prep
 %setup -q
@@ -28,7 +30,8 @@ rm -r externals/tinyxml
 
 %build
 # TINYXML= prevents use of bundled tinyxml
-CXXFLAGS="%{optflags} -DNDEBUG $(pcre-config --cflags)" \
+CFLAGS="-pg -g"
+CXXFLAGS="%{optflags} -DNDEBUG $(pcre-config --cflags) -pg -g" \
     LDFLAGS="$RPM_LD_FLAGS" LIBS=-ltinyxml2 make TINYXML= \
     CFGDIR=%{_datadir}/%{name} \
     DB2MAN=%{_datadir}/sgml/docbook/xsl-stylesheets/manpages/docbook.xsl \
