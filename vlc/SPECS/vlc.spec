@@ -219,6 +219,8 @@ Requires:	vlc-core%{_isa} = %{version}-%{release}
 %description plugin-jack
 JACK audio plugin for the VLC media player.
 
+%define __os_install_post %{nil}
+%define debug_package %{nil}
 
 %prep
 %setup -q -n %{name}-%{version}%{?vlc_rc}
@@ -231,6 +233,8 @@ rm aclocal.m4 m4/lib*.m4 m4/lt*.m4 || :
 
 %build
 
+export CFLAGS="-pg -g"
+export CXXFLAGS="-pg -g"
 
 %configure \
 	--disable-dependency-tracking		\
