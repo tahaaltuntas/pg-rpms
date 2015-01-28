@@ -1,0 +1,110 @@
+2014-02-20  Richard Henderson  <rth@redhat.com>
+
+	PR c++/60272
+	* builtins.c (expand_builtin_atomic_compare_exchange): Conditionalize
+	on failure the store back into EXPECT.  Always make a new pseudo for
+	OLDVAL.
+
+	* cas_n.c (libat_compare_exchange): Conditionalize on failure
+	the store back to EPTR.
+
+--- gcc/builtins.c	(revision 207972)
++++ gcc/builtins.c	(revision 207973)
+@@ -5350,7 +5350,7 @@ static rtx
+ expand_builtin_atomic_compare_exchange (enum machine_mode mode, tree exp, 
+ 					rtx target)
+ {
+-  rtx expect, desired, mem, oldval;
++  rtx expect, desired, mem, oldval, label;
+   enum memmodel success, failure;
+   tree weak;
+   bool is_weak;
+@@ -5388,14 +5388,26 @@ expand_builtin_atomic_compare_exchange (
+   if (host_integerp (weak, 0) && tree_low_cst (weak, 0) != 0)
+     is_weak = true;
+ 
+-  oldval = expect;
+-  if (!expand_atomic_compare_and_swap ((target == const0_rtx ? NULL : &target),
+-				       &oldval, mem, oldval, desired,
++  if (target == const0_rtx)
++    target = NULL;
++
++  /* Lest the rtl backend create a race condition with an imporoper store
++     to memory, always create a new pseudo for OLDVAL.  */
++  oldval = NULL;
++
++  if (!expand_atomic_compare_and_swap (&target, &oldval, mem, expect, desired,
+ 				       is_weak, success, failure))
+     return NULL_RTX;
+ 
+-  if (oldval != expect)
+-    emit_move_insn (expect, oldval);
++  /* Conditionally store back to EXPECT, lest we create a race condition
++     with an improper store to memory.  */
++  /* ??? With a rearrangement of atomics at the gimple level, we can handle
++     the normal case where EXPECT is totally private, i.e. a register.  At
++     which point the store can be unconditional.  */
++  label = gen_label_rtx ();
++  emit_cmp_and_jump_insns (target, const0_rtx, NE, NULL, VOIDmode, 1, label);
++  emit_move_insn (expect, oldval);
++  emit_label (label);
+ 
+   return target;
+ }
+--- libatomic/cas_n.c	(revision 207972)
++++ libatomic/cas_n.c	(revision 207973)
+@@ -51,10 +51,9 @@ SIZE(libat_compare_exchange) (UTYPE *mpt
+ #if !DONE && N <= WORDSIZE && defined(atomic_compare_exchange_w)
+ bool
+ SIZE(libat_compare_exchange) (UTYPE *mptr, UTYPE *eptr, UTYPE newval,
+-			      int smodel, int fmodel UNUSED)
++			      int smodel, int fmodel)
+ {
+   UWORD mask, shift, weval, woldval, wnewval, t, *wptr;
+-  bool ret = false;
+ 
+   pre_barrier (smodel);
+ 
+@@ -82,12 +81,13 @@ SIZE(libat_compare_exchange) (UTYPE *mpt
+     }
+   while (!atomic_compare_exchange_w (wptr, &woldval, t, true,
+ 				     __ATOMIC_RELAXED, __ATOMIC_RELAXED));
+-  ret = true;
++  post_barrier (smodel);
++  return true;
++
+  failure:
+   *eptr = woldval >> shift;
+-
+-  post_barrier (smodel);
+-  return ret;
++  post_barrier (fmodel);
++  return false;
+ }
+ 
+ #define DONE 1
+@@ -102,18 +102,17 @@ SIZE(libat_compare_exchange) (UTYPE *mpt
+ {
+   UTYPE oldval;
+   UWORD magic;
+-  bool ret = false;
++  bool ret;
+ 
+   pre_seq_barrier (smodel);
+   magic = protect_start (mptr);
+ 
+   oldval = *mptr;
+-  if (oldval == *eptr)
+-    {
+-      *mptr = newval;
+-      ret = true;
+-    }
+-  *eptr = oldval;
++  ret = (oldval == *eptr);
++  if (ret)
++    *mptr = newval;
++  else
++    *eptr = oldval;
+ 
+   protect_end (mptr, magic);
+   post_seq_barrier (smodel);
