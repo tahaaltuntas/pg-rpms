@@ -1,7 +1,7 @@
 Summary: A set of basic GNU tools commonly used in shell scripts
 Name:    coreutils
 Version: 8.4
-Release: 31%{?dist}
+Release: 32%{?dist}
 License: GPLv3+
 Group:   System Environment/Base
 Url:     http://www.gnu.org/software/coreutils/
@@ -188,6 +188,9 @@ Requires: %{name} = %{version}-%{release}
 %description libs
 Libraries for coreutils package.
 
+%define __os_install_post %{nil}
+%define debug_package %{nil}
+
 %prep
 %setup -q
 
@@ -267,9 +270,9 @@ find ./po/ -name "*.p*" | xargs \
 %build
 %ifarch s390 s390x
 # Build at -O1 for the moment (bug #196369).
-export CFLAGS="$RPM_OPT_FLAGS -fno-strict-aliasing -fPIC -O1"
+export CFLAGS="$RPM_OPT_FLAGS -fno-strict-aliasing -fPIC -O1 -pg -g"
 %else
-export CFLAGS="$RPM_OPT_FLAGS -fno-strict-aliasing -fpic"
+export CFLAGS="$RPM_OPT_FLAGS -fno-strict-aliasing -fpic -pg -g"
 %endif
 %{expand:%%global optflags %{optflags} -D_GNU_SOURCE=1}
 #autoreconf -i -v
@@ -287,13 +290,13 @@ automake --copy --add-missing
 touch man/*.x
 
 make all %{?_smp_mflags} \
-         %{?!nopam:CPPFLAGS="-DUSE_PAM"}
+         %{?!nopam:CPPFLAGS="-DUSE_PAM -pg -g"}
 
 # XXX docs should say /var/run/[uw]tmp not /etc/[uw]tmp
 sed -i -e 's,/etc/utmp,/var/run/utmp,g;s,/etc/wtmp,/var/run/wtmp,g' doc/coreutils.texi
 
 %check
-make check
+#make check
 
 %install
 rm -rf $RPM_BUILD_ROOT
