@@ -38,6 +38,9 @@ program. Gzipped files have a .gz extension.
 Gzip should be installed on your system, because it is a
 very commonly used data compression program.
 
+%define __os_install_post %{nil}
+%define debug_package %{nil}
+
 %prep
 %setup -q
 %patch0 -p1 -b .owl-tmp
@@ -63,7 +66,8 @@ very commonly used data compression program.
 
 %build
 export DEFS="NO_ASM"
-export CPPFLAGS="-DHAVE_LSTAT"
+export CFLAGS="-pg -g"
+export CPPFLAGS="-DHAVE_LSTAT -pg -g"
 %configure  --bindir=/bin
 
 make
