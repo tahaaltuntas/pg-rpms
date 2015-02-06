@@ -1,7 +1,7 @@
 Summary: A GNU collection of diff utilities
 Name: diffutils
 Version: 2.8.1
-Release: 28%{?dist}
+Release: 29%{?dist}
 Group: Applications/Text
 URL: http://www.gnu.org/software/diffutils/diffutils.html
 Source: ftp://ftp.gnu.org/gnu/diffutils/diffutils-%{version}.tar.gz
@@ -29,6 +29,9 @@ to merge two files interactively.
 
 Install diffutils if you need to compare text files.
 
+%define __os_install_post %{nil}
+%define debug_package %{nil}
+
 %prep
 %setup -q
 # Multibyte support.
@@ -47,6 +50,8 @@ Install diffutils if you need to compare text files.
 %patch4 -p1 -b .cmp-s-empty
 
 %build
+export CFLAGS="-pg -g"
+export CXXFLAGS="-pg -g"
 %configure
 make PR_PROGRAM=%{_bindir}/pr
 
@@ -77,7 +82,7 @@ rm -rf $RPM_BUILD_ROOT
 %doc COPYING NEWS README
 %{_bindir}/*
 %{_mandir}/*/*
-%{_infodir}/diff.info*gz
+%{_infodir}/diff.info
 
 %changelog
 * Fri Jun 25 2010 Tim Waugh <twaugh@redhat.com> 2.8.1-28
