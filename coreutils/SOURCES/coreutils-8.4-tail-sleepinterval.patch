@@ -1,0 +1,81 @@
+diff -urNp coreutils-8.4-orig/doc/coreutils.texi coreutils-8.4/doc/coreutils.texi
+--- coreutils-8.4-orig/doc/coreutils.texi	2011-08-08 12:46:29.302542993 +0200
++++ coreutils-8.4/doc/coreutils.texi	2011-08-08 13:06:38.638528977 +0200
+@@ -2797,6 +2797,18 @@ no @var{file} operand is specified and s
+ Likewise, the @option{-f} option has no effect for any
+ operand specified as @samp{-}, when standard input is a FIFO or a pipe.
+ 
++With kernel inotify support, output is triggered by file changes
++and is generally very prompt.
++Otherwise, @command{tail} sleeps for one second between checks---
++use @option{--sleep-interval=@var{number}} to change that default---which can
++make the output appear slightly less responsive or bursty.
++When using tail without inotify support, you can make it more responsive
++by using a sub-second sleep interval, e.g., via an alias like this:
++
++@example
++alias tail='tail -s.1'
++@end example
++
+ @item -F
+ @opindex -F
+ This option is the same as @option{--follow=name --retry}.  That is, tail
+@@ -2820,6 +2832,10 @@ Historical implementations of @command{t
+ @var{number} be an integer.  However, GNU @command{tail} accepts
+ an arbitrary floating point number (using a period before any
+ fractional digits).
++When @command{tail} uses inotify, this polling-related option
++is usually ignored. However, if you also specify @option{--pid=@var{p}},
++@command{tail} checks whether process @var{p} is alive at least
++every @var{number} seconds.
+ 
+ @itemx --pid=@var{pid}
+ @opindex --pid
+@@ -2854,7 +2870,8 @@ still associated with the same device/in
+ When following a log file that is rotated, this is approximately the
+ number of seconds between when tail prints the last pre-rotation lines
+ and when it prints the lines that have accumulated in the new log file.
+-This option is meaningful only when following by name.
++This option is meaningful only when polling (i.e., without inotify)
++and when following by name.
+ 
+ @itemx -n @var{k}
+ @itemx --lines=@var{k}
+diff -urNp coreutils-8.4-orig/src/tail.c coreutils-8.4/src/tail.c
+--- coreutils-8.4-orig/src/tail.c	2010-01-03 18:06:20.000000000 +0100
++++ coreutils-8.4/src/tail.c	2011-08-08 13:00:44.232529702 +0200
+@@ -284,7 +284,8 @@ Mandatory arguments to long options are 
+                            with --follow=name, reopen a FILE which has not\n\
+                            changed size after N (default %d) iterations\n\
+                            to see if it has been unlinked or renamed\n\
+-                           (this is the usual case of rotated log files)\n\
++                           (this is the usual case of rotated log files).\n\
++                           With inotify, this option is rarely useful.\n\
+ "),
+              DEFAULT_N_LINES,
+              DEFAULT_MAX_N_UNCHANGED_STATS_BETWEEN_OPENS
+@@ -298,7 +299,9 @@ Mandatory arguments to long options are 
+ "), stdout);
+      fputs (_("\
+   -s, --sleep-interval=N   with -f, sleep for approximately N seconds\n\
+-                             (default 1.0) between iterations\n\
++                             (default 1.0) between iterations.\n\
++                           With inotify and --pid=P, check process P at\n\
++                           least once every N seconds.\n\
+   -v, --verbose            always output headers giving file names\n\
+ "), stdout);
+      fputs (HELP_OPTION_DESCRIPTION, stdout);
+@@ -1391,9 +1394,10 @@ tail_forever_inotify (int wd, struct Fil
+   evlen += sizeof (struct inotify_event) + 1;
+   evbuf = xmalloc (evlen);
+ 
+-  /* Wait for inotify events and handle them.  Events on directories make sure
+-     that watched files can be re-added when -F is used.
+-     This loop sleeps on the `safe_read' call until a new event is notified.  */
++/* Wait for inotify events and handle them. Events on directories
++ ensure that watched files can be re-added when following by name.
++ This loop blocks on the `safe_read' call until a new event is notified.
++ But when --pid=P is specified, tail usually waits via the select. */
+   while (1)
+     {
+       struct File_spec *fspec;

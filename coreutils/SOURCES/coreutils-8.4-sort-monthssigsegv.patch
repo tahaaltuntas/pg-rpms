@@ -1,0 +1,43 @@
+--- a/src/sort.c	
++++ a/src/sort.c	
+@@ -1390,12 +1388,25 @@ static void
+ inittables_mb (void)
+ {
+   int i, j, k, l;
+-  char *name, *s;
++  char *name, *s, *lc_time, *lc_ctype;
+   size_t s_len, mblength;
+   char mbc[MB_LEN_MAX];
+   wchar_t wc, pwc;
+   mbstate_t state_mb, state_wc;
+ 
++  lc_time = setlocale (LC_TIME, "");
++  if (lc_time)
++    lc_time = xstrdup (lc_time);
++
++  lc_ctype = setlocale (LC_CTYPE, "");
++  if (lc_ctype)
++    lc_ctype = xstrdup (lc_ctype);
++
++  if (lc_time && lc_ctype)
++    /* temporarily set LC_CTYPE to match LC_TIME, so that we can convert
++     * the names of months to upper case */
++    setlocale (LC_CTYPE, lc_time);
++
+   for (i = 0; i < MONTHS_PER_YEAR; i++)
+     {
+       s = (char *) nl_langinfo (ABMON_1 + i);
+@@ -1440,6 +1451,13 @@ inittables_mb (void)
+     }
+   qsort ((void *) monthtab, MONTHS_PER_YEAR,
+       sizeof (struct month), struct_month_cmp);
++
++  if (lc_time && lc_ctype)
++    /* restore the original locales */
++    setlocale (LC_CTYPE, lc_ctype);
++
++  free (lc_ctype);
++  free (lc_time);
+ }
+ #endif
+ 

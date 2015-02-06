@@ -1,0 +1,41 @@
+diff -urNp coreutils-8.4-orig/src/su.c coreutils-8.4/src/su.c
+--- coreutils-8.4-orig/src/su.c	2013-07-24 18:31:40.767466051 +0200
++++ coreutils-8.4/src/su.c	2013-07-24 18:41:47.629622927 +0200
+@@ -709,14 +709,17 @@ As %s doesn't run auth and account PAM h
+ than su.\n\
+ \n\
+   -, -l, --login               make the shell a login shell, uses runuser-l\n\
+-                               PAM file instead of default one\n\
++                               PAM file instead of default one,\n\
++                               clears all envvars except for TERM,\n\
++                               initializes HOME, SHELL, USER, LOGNAME and PATH\n\
+   -g --group=group             specify the primary group\n\
+   -G --supp-group=group        specify a supplemental group\n\
+   -c, --command=COMMAND        pass a single COMMAND to the shell with -c\n\
+   --session-command=COMMAND    pass a single COMMAND to the shell with -c\n\
+                                and do not create a new session\n\
+   -f, --fast                   pass -f to the shell (for csh or tcsh)\n\
+-  -m, --preserve-environment   do not reset environment variables\n\
++  -m, --preserve-environment   do not reset HOME, SHELL, USER, LOGNAME\n\
++                               environment variables\n\
+   -p                           same as -m\n\
+   -s, --shell=SHELL            run SHELL if /etc/shells allows it\n\
+ "), program_name);
+@@ -724,12 +727,15 @@ than su.\n\
+       fputs (_("\
+ Change the effective user id and group id to that of USER.\n\
+ \n\
+-  -, -l, --login               make the shell a login shell\n\
++  -, -l, --login               make the shell a login shell, \n\
++                               clears all envvars except for TERM,\n\
++                               initializes HOME, SHELL, USER, LOGNAME and PATH\n\
+   -c, --command=COMMAND        pass a single COMMAND to the shell with -c\n\
+   --session-command=COMMAND    pass a single COMMAND to the shell with -c\n\
+                                and do not create a new session\n\
+   -f, --fast                   pass -f to the shell (for csh or tcsh)\n\
+-  -m, --preserve-environment   do not reset environment variables\n\
++  -m, --preserve-environment   do not reset HOME, SHELL, USER, LOGNAME\n\
++                               environment variables\n\
+   -p                           same as -m\n\
+   -s, --shell=SHELL            run SHELL if /etc/shells allows it\n\
+ "), stdout);

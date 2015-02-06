@@ -1,0 +1,41 @@
+diff -urNp coreutils-8.4-orig/lib/getdate.y coreutils-8.4/lib/getdate.y
+--- coreutils-8.4-orig/lib/getdate.y	2010-01-04 17:19:05.000000000 +0100
++++ coreutils-8.4/lib/getdate.y	2013-07-24 17:37:25.481111835 +0200
+@@ -106,6 +106,11 @@ typedef long int long_time_t;
+ typedef time_t long_time_t;
+ #endif
+ 
++/* Convert a possibly-signed character to an unsigned character.  This is
++   a bit safer than casting to unsigned char, since it catches some type
++   errors that the cast doesn't.  */
++static inline unsigned char to_uchar (char ch) { return ch; }
++
+ /* Lots of this code assumes time_t and time_t-like values fit into
+    long_time_t.  */
+ verify (TYPE_MINIMUM (long_time_t) <= TYPE_MINIMUM (time_t)
+@@ -1127,7 +1132,7 @@ yylex (YYSTYPE *lvalp, parser_control *p
+         }
+ 
+       if (c != '(')
+-        return *pc->input++;
++        return to_uchar (*pc->input++);
+       count = 0;
+       do
+         {
+diff -urNp coreutils-8.4-orig/m4/getdate.m4 coreutils-8.4/m4/getdate.m4
+--- coreutils-8.4-orig/m4/getdate.m4	2010-01-04 17:19:05.000000000 +0100
++++ coreutils-8.4/m4/getdate.m4	2013-07-24 17:36:04.632379356 +0200
+@@ -1,4 +1,4 @@
+-# getdate.m4 serial 16
++# getdate.m4 serial 17
+ dnl Copyright (C) 2002-2006, 2008-2010 Free Software Foundation, Inc.
+ dnl This file is free software; the Free Software Foundation
+ dnl gives unlimited permission to copy and/or distribute it,
+@@ -32,6 +32,7 @@ AC_DEFUN([gl_GETDATE],
+ 
+   dnl Prerequisites of lib/getdate.y.
+   AC_REQUIRE([gl_BISON])
++  AC_REQUIRE([AC_C_INLINE])
+   AC_REQUIRE([gl_C_COMPOUND_LITERALS])
+   AC_STRUCT_TIMEZONE
+   AC_REQUIRE([gl_CLOCK_TIME])

@@ -1,0 +1,86 @@
+diff -urNp coreutils-8.4orig/src/su.c coreutils-8.4/src/su.c
+--- coreutils-8.4orig/src/su.c	2013-07-11 08:57:31.166050207 -0400
++++ coreutils-8.4/src/su.c	2013-07-11 09:14:09.415611008 -0400
+@@ -447,7 +447,7 @@ static int caught=0;
+ /* Signal handler for parent process later */
+ static void su_catch_sig(int sig)
+ {
+-  ++caught;
++  caught = sig;
+ }
+
+ int
+@@ -484,6 +484,7 @@ run_shell (char const *shell, char const
+   char const **args = xnmalloc (n_args, sizeof *args);
+   size_t argno = 1;
+ #ifdef USE_PAM
++  struct sigaction oldact[3];
+   int child;
+   int pid;
+   sigset_t blockset, ourset;
+@@ -582,13 +583,13 @@ run_shell (char const *shell, char const
+       }
+     if (!caught && (sigaddset(&ourset, SIGTERM)
+                     || sigaddset(&ourset, SIGALRM)
+-                    || sigaction(SIGTERM, &action, NULL)
++                    || sigaction(SIGTERM, &action, &oldact[0])
+                     || sigprocmask(SIG_UNBLOCK, &ourset, NULL))) {
+       fprintf(stderr, "%s: signal masking malfunction\n", PROGRAM_NAME);
+       caught = 1;
+     }
+-    if (!caught && !same_session && (sigaction(SIGINT, &action, NULL)
+-                                     || sigaction(SIGQUIT, &action, NULL)))
++    if (!caught && !same_session && (sigaction(SIGINT, &action, &oldact[1])
++                                     || sigaction(SIGQUIT, &action, &oldact[2])))
+       {
+         fprintf(stderr, "%s: signal masking malfunction\n", PROGRAM_NAME);
+         caught = 1;
+@@ -613,7 +614,25 @@ run_shell (char const *shell, char const
+           kill(pid, SIGCONT);
+       }
+     } while (((pid_t)-1 != pid) && (0 != WIFSTOPPED(status)));
++    if (pid != (pid_t)-1)
++      {
++        if (WIFSIGNALED (status))
++          {
++            status = WTERMSIG (status) + 128;
++            if (WCOREDUMP (status))
++              fprintf (stderr, _("%s (core dumped)\n"),
++                 strsignal (WTERMSIG (status)));
++          }
++        else
++          status = WEXITSTATUS (status);
++      }
++      else if (caught)
++        status = caught + 128;
++      else
++        status = 1;
+   }
++  else
++    status = 1;
+
+   if (caught) {
+     fprintf(stderr, "\nSession terminated, killing shell...");
+@@ -629,7 +648,21 @@ run_shell (char const *shell, char const
+     sleep(2);
+     kill(child, SIGKILL);
+     fprintf(stderr, " ...killed.\n");
+-    exit(-1);
++    switch (caught) {
++        case SIGTERM:
++          sigaction(SIGTERM, &oldact[0], NULL);
++          break;
++        case SIGINT:
++          sigaction(SIGINT, &oldact[1], NULL);
++          break;
++        case SIGQUIT:
++          sigaction(SIGQUIT, &oldact[2], NULL);
++          break;
++        default:
++          break;
++      }
++      kill(0, caught);
++      exit(status);
+   }
+   exit ((0 != WIFEXITED (status)) ? WEXITSTATUS (status)
+                                   : WTERMSIG (status) + 128);

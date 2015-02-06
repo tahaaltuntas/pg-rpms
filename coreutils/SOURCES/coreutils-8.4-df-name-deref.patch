@@ -1,0 +1,23 @@
+diff -urNp coreutils-8.4-orig/src/df.c ./coreutils-8.4/src/df.c
+--- coreutils-8.4-orig/src/df.c	2013-09-16 16:35:46.245177769 +0200
++++ coreutils-8.4/src/df.c	2013-09-16 17:19:13.900126958 +0200
+@@ -538,8 +538,8 @@ get_dev (char const *disk, char const *m
+   && has_uuid_suffix (dev_name)
+   && (resolved_dev = canonicalize_filename_mode (dev_name, CAN_EXISTING)))
+   {
+-  free (dev_name);
+-  dev_name = resolved_dev;
++    free (dev_name);
++    dev_name = resolved_dev;
+   }
+ 
+   if (! fstype)
+@@ -592,7 +592,7 @@ get_dev (char const *disk, char const *m
+       switch (field)
+         {
+         case DEV_FIELD:
+-          cell = xstrdup (disk);
++          cell = xstrdup (has_uuid_suffix(disk) ? dev_name : disk);
+           break;
+         case TYPE_FIELD:
+           cell = print_type ? xstrdup (fstype) : NULL;

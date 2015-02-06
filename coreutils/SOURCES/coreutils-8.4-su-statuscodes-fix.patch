@@ -1,0 +1,13 @@
+diff -up coreutils-8.4/src/su.c.orig coreutils-8.4/src/su.c
+--- coreutils-8.4/src/su.c.orig	2013-08-14 07:47:10.938051798 -0400
++++ coreutils-8.4/src/su.c	2013-08-14 07:30:31.058597575 -0400
+@@ -665,7 +665,7 @@ run_shell (char const *shell, char const
+       exit(status);
+   }
+-  exit ((0 != WIFEXITED (status)) ? WEXITSTATUS (status)
+-                                  : WTERMSIG (status) + 128);
++  exit (status);
++
+ #endif /* USE_PAM */
+ }
+

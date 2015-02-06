@@ -1,0 +1,29 @@
+diff -up coreutils-8.4/src/df.c-orig coreutils-8.4/src/df.c
+--- coreutils-8.4/src/df.c-orig	2013-07-31 13:25:08.599960554 -0400
++++ coreutils-8.4/src/df.c	2013-07-31 13:25:14.367926543 -0400
+@@ -1134,12 +1134,19 @@ main (int argc, char **argv)
+         }
+     }
+ 
+-  if (direct_statfs && show_local_fs)
+-    {
+-      error (0, 0, _("options --direct and --local (-l) are mutually "
+-		     "exclusive"));
+-      usage (EXIT_FAILURE);
+-    }
++  if (direct_statfs) 
++    if (show_local_fs)
++      {
++        error (0, 0, _("options --direct and --local (-l) are mutually "
++  		     "exclusive"));
++        usage (EXIT_FAILURE);
++      }
++    else
++      {
++	for (int i = 0; i < NMODES; i++)
++		headers[NFIELDS-1][i] = N_("File");
++      }
++        
+ 
+   if (human_output_opts == -1)
+     {

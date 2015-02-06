@@ -1,0 +1,144 @@
+diff -urNp coreutils-8.4/lib/acl-internal.h coreutils-8.4-orig/lib/acl-internal.h
+--- coreutils-8.4/lib/acl-internal.h	2010-01-04 17:19:05.000000000 +0100
++++ coreutils-8.4-orig/lib/acl-internal.h	2011-10-04 15:47:02.195436033 +0200
+@@ -112,6 +112,12 @@ rpl_acl_set_fd (int fd, acl_t acl)
+ #  endif
+ 
+ /* Linux-specific */
++#  ifndef HAVE_ACL_EXTENDED_FILE_NOFOLLOW
++#   define HAVE_ACL_EXTENDED_FILE_NOFOLLOW false
++#   define acl_extended_file_nofollow(name) (-1)
++#  endif
++
++/* Linux-specific */
+ #  ifndef HAVE_ACL_FROM_MODE
+ #   define HAVE_ACL_FROM_MODE false
+ #   define acl_from_mode(mode) (NULL)
+diff -urNp coreutils-8.4/lib/file-has-acl.c coreutils-8.4-orig/lib/file-has-acl.c
+--- coreutils-8.4/lib/file-has-acl.c	2010-01-04 17:19:05.000000000 +0100
++++ coreutils-8.4-orig/lib/file-has-acl.c	2011-10-04 15:47:02.195436033 +0200
+@@ -23,6 +23,33 @@ acl_nontrivial (struct acl *a)
+ 
+ #include "acl-internal.h"
+ 
++/* acl_extended_file() tests whether a file has an ACL.  But it can trigger
++   unnecessary autofs mounts.  In newer versions of libacl, a function
++   acl_extended_file_nofollow() is available that uses lgetxattr() and
++   therefore does not have this problem.  It is equivalent to
++   acl_extended_file(), except on symbolic links.  */
++
++static int
++acl_extended_file_wrap (char const *name)
++{
++  if ( ! HAVE_ACL_EXTENDED_FILE)
++    return -1;
++
++  if (HAVE_ACL_EXTENDED_FILE_NOFOLLOW)
++    {
++      struct stat sb;
++      if (! lstat (name, &sb) && ! S_ISLNK (sb.st_mode))
++        /* acl_extended_file_nofollow() uses lgetxattr() in order to
++           prevent unnecessary mounts.  It returns the same result as
++           acl_extended_file() since we already know that NAME is not a
++           symbolic link at this point (modulo the TOCTTOU race condition).  */
++        return acl_extended_file_nofollow (name);
++    }
++
++  /* fallback for symlinks and old versions of libacl */
++  return acl_extended_file (name);
++}
++
+ 
+ #if USE_ACL && HAVE_ACL_GET_FILE
+ 
+@@ -315,10 +342,7 @@ file_has_acl (char const *name, struct s
+ 
+       if (HAVE_ACL_EXTENDED_FILE) /* Linux */
+         {
+-          /* On Linux, acl_extended_file is an optimized function: It only
+-             makes two calls to getxattr(), one for ACL_TYPE_ACCESS, one for
+-             ACL_TYPE_DEFAULT.  */
+-          ret = acl_extended_file (name);
++          ret = acl_extended_file_wrap (name);
+         }
+       else /* FreeBSD, MacOS X, IRIX, Tru64 */
+         {
+diff -urNp coreutils-8.4/m4/acl.m4 coreutils-8.4-orig/m4/acl.m4
+--- coreutils-8.4/m4/acl.m4	2010-01-04 17:19:05.000000000 +0100
++++ coreutils-8.4-orig/m4/acl.m4	2011-10-04 15:47:02.196438425 +0200
+@@ -33,7 +33,7 @@ AC_DEFUN([gl_FUNC_ACL],
+            AC_CHECK_FUNCS(
+              [acl_get_file acl_get_fd acl_set_file acl_set_fd \
+               acl_free acl_from_mode acl_from_text \
+-              acl_delete_def_file acl_extended_file \
++              acl_delete_def_file acl_extended_file acl_extended_file_nofollow \
+               acl_delete_fd_np acl_delete_file_np \
+               acl_copy_ext_native acl_create_entry_np \
+               acl_to_short_text acl_free_text])
+diff -urNp coreutils-8.4-orig/tests/ls/slink-acl coreutils-8.4/tests/ls/slink-acl
+--- coreutils-8.4-orig/tests/ls/slink-acl	1970-01-01 01:00:00.000000000 +0100
++++ coreutils-8.4/tests/ls/slink-acl	2011-10-04 15:50:09.338551867 +0200
+@@ -0,0 +1,36 @@
++#!/bin/sh
++# verify that ls -lL works when applied to a symlink to an ACL'd file
++
++# Copyright (C) 2011 Free Software Foundation, Inc.
++
++# This program is free software: you can redistribute it and/or modify
++# it under the terms of the GNU General Public License as published by
++# the Free Software Foundation, either version 3 of the License, or
++# (at your option) any later version.
++
++# This program is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++
++# You should have received a copy of the GNU General Public License
++# along with this program.  If not, see <http://www.gnu.org/licenses/>.
++
++if test "$VERBOSE" = yes; then
++  set -x
++  ls --version
++fi
++
++. $srcdir/test-lib.sh
++require_setacl_
++
++touch k || framework_failure_
++setfacl -m user:${USER}:r k || framework_failure_
++ln -s k s || framework_failure_
++
++set _ $(ls -Log s); shift; link=$1
++set _ $(ls -og k);  shift; reg=$1
++
++test "$link" = "$reg" || fail=1
++
++Exit $fail
+diff -urNp coreutils-8.4-orig/tests/Makefile.am coreutils-8.4/tests/Makefile.am
+--- coreutils-8.4-orig/tests/Makefile.am	2011-10-04 15:47:02.077561647 +0200
++++ coreutils-8.4/tests/Makefile.am	2011-10-04 15:48:23.127014791 +0200
+@@ -385,6 +385,7 @@ TESTS =						\
+   ls/readdir-mountpoint-inode			\
+   ls/recursive					\
+   ls/rt-1					\
++  ls/slink-acl					\
+   ls/stat-dtype					\
+   ls/stat-failed				\
+   ls/stat-free-symlinks				\
+diff -urNp coreutils-8.4-orig/tests/test-lib.sh coreutils-8.4/tests/test-lib.sh
+--- coreutils-8.4-orig/tests/test-lib.sh	2011-10-04 15:47:02.235439128 +0200
++++ coreutils-8.4/tests/test-lib.sh	2011-10-04 15:47:54.067560983 +0200
+@@ -79,6 +79,12 @@ require_selinux_enforcing_()
+     || skip_test_ "This test is useful only with SELinux in Enforcing mode."
+ }
+ 
++require_setfacl_()
++{
++  setfacl -m user::rwx . \
++    || skip_ "setfacl does not work on the current file system"
++}
++
+ require_openat_support_()
+ {
+   # Skip this test if your system has neither the openat-style functions

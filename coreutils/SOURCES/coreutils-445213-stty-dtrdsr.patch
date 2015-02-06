@@ -1,0 +1,68 @@
+diff -urNp coreutils-8.4-orig/doc/coreutils.texi coreutils-8.4/doc/coreutils.texi
+--- coreutils-8.4-orig/doc/coreutils.texi	2011-01-07 12:41:24.697665788 +0100
++++ coreutils-8.4/doc/coreutils.texi	2011-01-07 12:46:38.622654193 +0100
+@@ -12456,6 +12456,13 @@ Disable modem control signals.  May be n
+ @cindex flow control, hardware
+ @cindex RTS/CTS flow control
+ Enable RTS/CTS flow control.  Non-@acronym{POSIX}.  May be negated.
++
++@item cdtrdsr
++@opindex cdtrdsr
++@cindex hardware flow control
++@cindex flow control, hardware
++@cindex DTR/DSR flow control
++Enable DTR/DSR flow control. Non-@acronym{POSIX}.  May be negated.
+ @end table
+ 
+ 
+diff -urNp coreutils-8.4-orig/src/stty.c coreutils-8.4/src/stty.c
+--- coreutils-8.4-orig/src/stty.c	2011-01-07 12:41:24.500914147 +0100
++++ coreutils-8.4/src/stty.c	2011-01-07 12:48:17.057734023 +0100
+@@ -77,6 +77,9 @@ /* Canonical values for control characters. */
+ #ifndef CINTR
+ # define CINTR Control ('c')
+ #endif
++#ifndef CDTRDSR
++# define CDTRDSR	  004000000000	/* DTR/DSR flow control */
++#endif
+ #ifndef CQUIT
+ # define CQUIT 28
+ #endif
+@@ -220,7 +223,7 @@ static struct mode_info const mode_info[
+ #ifdef CRTSCTS
+   {"crtscts", control, REV, CRTSCTS, 0},
+ #endif
+-
++  {"cdtrdsr", control, REV, CDTRDSR, 0},
+   {"ignbrk", input, SANE_UNSET | REV, IGNBRK, 0},
+   {"brkint", input, SANE_SET | REV, BRKINT, 0},
+   {"ignpar", input, REV, IGNPAR, 0},
+@@ -581,6 +584,7 @@ Special settings:\n\
+    [-]clocal     disable modem control signals\n\
+    [-]cread      allow input to be received\n\
+  * [-]crtscts    enable RTS/CTS handshaking\n\
++ * [-]cdtrdsr    enable DTR/DSR handshaking\n\
+    csN           set character size to N bits, N in [5..8]\n\
+ "), stdout);
+       fputs (_("\
+diff -urNp coreutils-8.4-orig/tests/misc/stty coreutils-8.4/tests/misc/stty
+--- coreutils-8.4-orig/tests/misc/stty	2010-01-03 18:06:20.000000000 +0100
++++ coreutils-8.4/tests/misc/stty	2011-01-07 12:50:42.960697984 +0100
+@@ -38,7 +38,7 @@ REV_echoe=1 REV_crterase=1 REV_echok=1 R
+ REV_xcase=1 REV_tostop=1 REV_echoprt=1 REV_prterase=1 REV_echoctl=1
+ REV_ctlecho=1 REV_echoke=1 REV_crtkill=1 REV_evenp=1 REV_parity=1
+ REV_oddp=1 REV_nl=1 REV_cooked=1 REV_raw=1 REV_pass8=1 REV_litout=1
+-REV_cbreak=1 REV_decctlq=1 REV_tabs=1 REV_lcase=1 REV_LCASE=1
++REV_cbreak=1 REV_decctlq=1 REV_tabs=1 REV_lcase=1 REV_LCASE=1 REV_cdtrdsr=1
+ 
+ 
+ saved_state=.saved-state
+@@ -65,7 +65,7 @@ for opt in $options; do
+   # stty: standard input: unable to perform all requested operations
+   # on Linux 2.2.0-pre4 kernels.  Also since around Linux 2.6.30
+   # other serial control settings give the same error. So skip them.
+-  case $opt in parenb|parodd|cstopb|crtscts) continue;; esac
++  case $opt in parenb|parodd|cstopb|crtscts|cdtrdsr) continue;; esac
+ 
+   stty $opt || fail=1
+ 

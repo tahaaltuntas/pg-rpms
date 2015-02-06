@@ -1,0 +1,147 @@
+diff -up src/du.c.orig src/du.c
+--- coreutils-8.4-orig/src/du.c.orig	2013-07-26 07:52:17.935034162 -0400
++++ coreutils-8.4/src/du.c	2013-07-26 07:57:04.508382862 -0400
+@@ -35,6 +35,7 @@
+ #include "fprintftime.h"
+ #include "hash.h"
+ #include "human.h"
++#include "mountlist.h"
+ #include "quote.h"
+ #include "quotearg.h"
+ #include "same.h"
+@@ -73,8 +74,12 @@ struct entry
+   dev_t st_dev;
+ };
+ 
+-/* A set of dev/ino pairs.  */
+-static Hash_table *htab;
++/* A set of dev/ino pairs to help identify files and directories
++   whose sizes have already been counted.  */
++static Hash_table *di_files;
++
++/* A set containing a dev/ino pair for each local mountpoint entry.  */
++static Hash_table *di_mnt;
+ 
+ /* Define a class for collecting directory information. */
+ 
+@@ -359,7 +364,7 @@ entry_compare (void const *x, void const
+    Return true if the pair is successfully inserted,
+    false if the pair is already in the table.  */
+ static bool
+-hash_ins (ino_t ino, dev_t dev)
++hash_ins (Hash_table *htab , ino_t ino, dev_t dev)
+ {
+   struct entry *ent;
+   struct entry *ent_from_table;
+@@ -387,13 +392,50 @@ hash_ins (ino_t ino, dev_t dev)
+   return false;
+ }
+ 
++/* Fill the di_mnt set with local mount point dev/ino pairs.  */
++
++static void
++fill_mount_table (void)
++{
++  struct mount_entry *mnt_ent = read_file_system_list (false);
++  
++  while (mnt_ent)
++    {
++      struct mount_entry *mnt_free;
++      if (!mnt_ent->me_remote)
++        {
++          struct stat buf;
++          if (!stat (mnt_ent->me_mountdir, &buf))
++            hash_ins (di_mnt, buf.st_ino, buf.st_dev);
++          else
++            {
++              /* Ignore stat failure.  False positives are too common.
++                 E.g., "Permission denied" on /run/user/<name>/gvfs.  */
++            }
++        }
++
++      mnt_free = mnt_ent;
++      mnt_ent = mnt_ent->me_next;
++
++      free (mnt_free->me_devname);
++      free (mnt_free->me_mountdir);
++      free (mnt_free->me_type);
++      free (mnt_free);
++    }
++}
+ /* Initialize the hash table.  */
+ static void
+ hash_init (void)
+ {
+-  htab = hash_initialize (INITIAL_TABLE_SIZE, NULL,
+-                          entry_hash, entry_compare, free);
+-  if (htab == NULL)
++  di_mnt = hash_initialize (INITIAL_TABLE_SIZE, NULL,
++                          entry_hash, entry_compare, NULL);
++  if (!di_mnt)
++    xalloc_die ();
++
++  fill_mount_table ();
++  di_files = hash_initialize (INITIAL_TABLE_SIZE, NULL,
++                          entry_hash, entry_compare, NULL);
++  if (!di_files)
+     xalloc_die ();
+ }
+ 
+@@ -445,7 +487,6 @@ print_size (const struct duinfo *pdui, c
+    encounters.  fts does a depth-first traversal.  This function knows
+    that and accumulates per-directory totals based on changes in
+    the depth of the current entry.  It returns true on success.  */
+-
+ static bool
+ process_file (FTS *fts, FTSENT *ent)
+ {
+@@ -468,6 +509,7 @@ process_file (FTS *fts, FTSENT *ent)
+ 
+   const char *file = ent->fts_path;
+   const struct stat *sb = ent->fts_statp;
++  const struct entry e = {.st_ino = ent->fts_statp->st_ino, .st_dev = ent->fts_statp->st_dev};
+   bool skip;
+ 
+   /* If necessary, set FTS_SKIP before returning.  */
+@@ -496,7 +538,13 @@ process_file (FTS *fts, FTSENT *ent)
+     case FTS_DC:		/* directory that causes cycles */
+       if (cycle_warning_required (fts, ent))
+         {
+-          emit_cycle_warning (file);
++          /* If this is a mount point, then diagnose it and avoid
++             the cycle.  */
++          if (hash_lookup (di_mnt, &e))
++            error(0, 0, _("mount point %s already traversed"),
++              quote(file));
++          else
++            emit_cycle_warning (file);
+           return false;
+         }
+       ok = true;
+@@ -519,7 +567,7 @@ process_file (FTS *fts, FTSENT *ent)
+       || (!opt_count_all
+           && ! S_ISDIR (sb->st_mode)
+           && 1 < sb->st_nlink
+-          && ! hash_ins (sb->st_ino, sb->st_dev)))
++          && ! hash_ins (di_files, sb->st_ino, sb->st_dev)))
+     {
+       /* Note that we must not simply return here.
+          We still have to update prev_level and maybe propagate
+@@ -657,6 +705,7 @@ du_files (char **files, int bit_flags)
+   return ok;
+ }
+ 
++
+ int
+ main (int argc, char **argv)
+ {
+@@ -1025,7 +1074,8 @@ main (int argc, char **argv)
+   if (print_grand_total)
+     print_size (&tot_dui, _("total"));
+ 
+-  hash_free (htab);
++  hash_free (di_files);
++  hash_free (di_mnt);
+ 
+   exit (ok ? EXIT_SUCCESS : EXIT_FAILURE);
+ }

@@ -1,0 +1,17 @@
+diff -urNp coreutils-8.4-orig/tests/test-lib.sh coreutils-8.4/tests/test-lib.sh
+--- coreutils-8.4-orig/tests/test-lib.sh	2011-08-08 15:49:04.650529588 +0200
++++ coreutils-8.4/tests/test-lib.sh	2011-08-08 15:50:18.355529788 +0200
+@@ -218,6 +218,13 @@ skip_if_()
+ 
+ require_selinux_()
+ {
++  # When in a chroot of an SELinux-enabled system, but with a mock-simulated
++  # SELinux-*disabled* system, recognize that SELinux is disabled system wide:
++  grep 'selinuxfs$' /proc/filesystems > /dev/null \
++    || skip_test_ "this system lacks SELinux support"
++
++  # Independent of whether SELinux is enabled system-wide,
++  # the current file system may lack SELinux support.
+   case `ls --scontext -d . | cut -f1 -d" "` in
+     '?'|'unlabeled')
+       skip_test_ "this system (or maybe just" \

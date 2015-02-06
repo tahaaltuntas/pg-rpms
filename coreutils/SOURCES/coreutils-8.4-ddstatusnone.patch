@@ -1,0 +1,108 @@
+diff -urNp coreutils-8.4-orig/doc/coreutils.texi coreutils-8.4/doc/coreutils.texi
+--- coreutils-8.4-orig/doc/coreutils.texi	2013-07-24 14:50:57.160270485 +0200
++++ coreutils-8.4/doc/coreutils.texi	2013-07-24 14:53:14.882228598 +0200
+@@ -7781,10 +7781,25 @@ Skip @var{blocks} @samp{obs}-byte blocks
+ Copy @var{blocks} @samp{ibs}-byte blocks from the input file, instead
+ of everything until the end of the file.
+ 
+-@item status=noxfer
++@item status=@var{which}
+ @opindex status
+-Do not print the overall transfer rate and volume statistics
+-that normally make up the third status line when @command{dd} exits.
++Transfer information is normally output to stderr upon
++receipt of the @samp{INFO} signal or when @command{dd} exits.
++Specifying @var{which} will identify which information to suppress.
++
++@table @samp
++
++@item noxfer
++@opindex noxfer @r{dd status=}
++Do not print the transfer rate and volume statistics
++that normally make up the last status line.
++
++@item none
++@opindex none @r{dd status=}
++Do not print any informational messages to stderr.
++Error messages are output as normal.
++
++@end table
+ 
+ @item conv=@var{conversion}[,@var{conversion}]@dots{}
+ @opindex conv
+diff -urNp coreutils-8.4-orig/src/dd.c coreutils-8.4/src/dd.c
+--- coreutils-8.4-orig/src/dd.c	2010-01-03 18:06:20.000000000 +0100
++++ coreutils-8.4/src/dd.c	2013-07-24 14:55:45.575062516 +0200
+@@ -132,7 +132,10 @@ enum
+ /* Status bit masks.  */
+ enum
+   {
+-    STATUS_NOXFER = 01
++  STATUS_NOXFER = 01,
++  STATUS_NOCOUNTS = 02,
++  STATUS_LAST = STATUS_NOCOUNTS,
++  STATUS_NONE = STATUS_LAST | (STATUS_LAST - 1)
+   };
+ 
+ /* The name of the input file, or NULL for the standard input. */
+@@ -320,6 +323,7 @@ static struct symbol_value const flags[]
+ static struct symbol_value const statuses[] =
+ {
+   {"noxfer",	STATUS_NOXFER},
++  {"none",	STATUS_NONE},
+   {"",		0}
+ };
+ 
+@@ -487,7 +491,8 @@ Copy a file, converting and formatting a
+   oflag=FLAGS     write as per the comma separated symbol list\n\
+   seek=BLOCKS     skip BLOCKS obs-sized blocks at start of output\n\
+   skip=BLOCKS     skip BLOCKS ibs-sized blocks at start of input\n\
+-  status=noxfer   suppress transfer statistics\n\
++  status=WHICH    WHICH info to suppress outputting to stderr;\n\
++                  'noxfer' suppresses transfer stats, 'none' suppresses all\n\
+ "), stdout);
+       fputs (_("\
+ \n\
+@@ -603,7 +608,6 @@ multiple_bits_set (int i)
+ static void
+ print_stats (void)
+ {
+-  xtime_t now = gethrxtime ();
+   char hbuf[LONGEST_HUMAN_READABLE + 1];
+   int human_opts =
+     (human_autoscale | human_round_to_nearest
+@@ -611,6 +615,9 @@ print_stats (void)
+   double delta_s;
+   char const *bytes_per_second;
+ 
++  if ((status_flags & STATUS_NONE) == STATUS_NONE)
++  return;
++
+   fprintf (stderr,
+            _("%"PRIuMAX"+%"PRIuMAX" records in\n"
+              "%"PRIuMAX"+%"PRIuMAX" records out\n"),
+@@ -636,6 +643,7 @@ print_stats (void)
+            w_bytes,
+            human_readable (w_bytes, hbuf, human_opts, 1, 1));
+ 
++  xtime_t now = gethrxtime ();
+   if (start_time < now)
+     {
+       double XTIME_PRECISIONe0 = XTIME_PRECISION;
+diff -urNp coreutils-8.4-orig/tests/dd/misc coreutils-8.4/tests/dd/misc
+--- coreutils-8.4-orig/tests/dd/misc	2010-01-03 18:06:20.000000000 +0100
++++ coreutils-8.4/tests/dd/misc	2013-07-24 14:56:48.908564221 +0200
+@@ -34,6 +34,13 @@ echo data > $tmp_in || framework_failure
+ ln $tmp_in $tmp_in2 || framework_failure
+ ln -s $tmp_in $tmp_sym || framework_failure
+ 
++# check status=none suppresses all output to stderr
++dd status=none if=$tmp_in of=/dev/null 2> err || fail=1
++test -s err && fail=1
++# check status=none is cumulative with status=noxfer
++dd status=none status=noxfer if=$tmp_in of=/dev/null 2> err || fail=1
++test -s err && fail=1
++
+ dd if=$tmp_in of=$tmp_out 2> /dev/null || fail=1
+ compare $tmp_in $tmp_out || fail=1
+ 

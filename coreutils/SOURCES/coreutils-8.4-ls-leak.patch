@@ -1,0 +1,43 @@
+diff -urNp coreutils-8.4-orig/src/ls.c coreutils-8.4/src/ls.c
+--- coreutils-8.4-orig/src/ls.c	2012-02-15 15:51:02.801674494 +0100
++++ coreutils-8.4/src/ls.c	2012-02-15 15:55:35.155671914 +0100
+@@ -2698,6 +2698,15 @@ has_capability (char const *name ATTRIBU
+ 
+ /* Enter and remove entries in the table `cwd_file'.  */
+ 
++static void
++free_ent (struct fileinfo *f)
++{
++  free (f->name);
++  free (f->linkname);
++  if (f->scontext != UNKNOWN_SECURITY_CONTEXT)
++    freecon (f->scontext);
++}
++
+ /* Empty the table of files.  */
+ 
+ static void
+@@ -2708,12 +2717,8 @@ clear_files (void)
+   for (i = 0; i < cwd_n_used; i++)
+     {
+       struct fileinfo *f = sorted_file[i];
+-      free (f->name);
+-      free (f->linkname);
+-      if (f->scontext != UNKNOWN_SECURITY_CONTEXT) {
+-               freecon (f->scontext);
+-        f->scontext = NULL;
+-      }
++      free_ent (f);
++      f->scontext = NULL;
+     }
+ 
+   cwd_n_used = 0;
+@@ -3147,7 +3153,7 @@ extract_dirs_from_files (char const *dir
+               free (name);
+             }
+           if (f->filetype == arg_directory)
+-            free (f->name);
++            free_ent(f);
+         }
+     }
+ 

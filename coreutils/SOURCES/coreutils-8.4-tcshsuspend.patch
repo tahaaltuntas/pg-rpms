@@ -1,0 +1,19 @@
+diff -urNp coreutils-8.4-orig/src/su.c coreutils-8.4/src/su.c
+--- coreutils-8.4-orig/src/su.c	2011-08-08 17:09:38.220532528 +0200
++++ coreutils-8.4/src/su.c	2011-08-08 17:11:13.054026651 +0200
+@@ -600,7 +600,15 @@ run_shell (char const *shell, char const
+       pid = waitpid(child, &status, WUNTRACED);
+ 
+       if (((pid_t)-1 != pid) && (0 != WIFSTOPPED (status))) {
++          /* tcsh sends SIGTSTP to the process group, and so is already pending */
+           kill(getpid(), WSTOPSIG(status));
++          if (WSTOPSIG(status) != SIGSTOP) {
++            sigemptyset(&blockset);
++            sigaddset(&blockset, WSTOPSIG(status));
++            sigprocmask(SIG_UNBLOCK, &blockset, &ourset);
++            /* signal taken here */
++            sigprocmask(SIG_SETMASK, &ourset, NULL);
++          }
+           /* once we get here, we must have resumed */
+           kill(pid, SIGCONT);
+       }

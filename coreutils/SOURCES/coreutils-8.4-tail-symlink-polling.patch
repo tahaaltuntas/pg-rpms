@@ -1,0 +1,23 @@
+diff -urNp coreutils-8.4-orig/src/tail.c coreutils-8.4/src/tail.c
+--- coreutils-8.4-orig/src/tail.c	1970-01-01 01:00:00.000000000 +0100
++++ coreutils-8.4/src/tail.c	2013-09-16 15:26:12.525060789 +0100
+@@ -2108,7 +2108,18 @@ main (int argc, char **argv)
+ 
+   F = xnmalloc (n_files, sizeof *F);
+   for (i = 0; i < n_files; i++)
+-    F[i].name = file[i];
++    {
++      F[i].name = file[i];
++      if (!disable_inotify)
++        {
++          struct stat st;
++          if (!lstat(F[i].name, &st) && S_ISLNK(st.st_mode))
++  	    {
++              disable_inotify = true;
++              error (0, 0, _("inotify cannot be used, reverting to polling"));
++            }
++        }
++    }
+ 
+   if (header_mode == always
+       || (header_mode == multiple_files && n_files > 1))

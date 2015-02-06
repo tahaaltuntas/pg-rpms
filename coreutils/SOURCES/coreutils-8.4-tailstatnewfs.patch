@@ -1,0 +1,69 @@
+diff -urNp coreutils-8.4-orig/src/stat.c coreutils-8.4/src/stat.c
+--- coreutils-8.4-orig/src/stat.c	2012-02-16 12:58:31.632485356 +0100
++++ coreutils-8.4/src/stat.c	2012-02-16 13:10:29.460482887 +0100
+@@ -252,6 +252,8 @@ human_fstype (STRUCT_STATVFS const *stat
+       return "devfs";
+     case S_MAGIC_DEVPTS: /* 0x1CD1 */
+       return "devpts";
++    case S_MAGIC_ECRYPTFS: /* 0xF15F */
++      return "ecryptfs";
+     case S_MAGIC_EFS: /* 0x00414A53 */
+       return "efs";
+     case S_MAGIC_EXT: /* 0x137D */
+@@ -262,6 +264,8 @@ human_fstype (STRUCT_STATVFS const *stat
+       return "ext2";
+     case S_MAGIC_FAT: /* 0x4006 */
+       return "fat";
++    case S_MAGIC_FHGFS: /* 0x19830326 */
++      return "fhgfs";
+     case S_MAGIC_FUSEBLK: /* 0x65735546 */
+       return "fuseblk";
+     case S_MAGIC_FUSECTL: /* 0x65735543 */
+@@ -270,6 +274,8 @@ human_fstype (STRUCT_STATVFS const *stat
+       return "futexfs";
+     case S_MAGIC_GFS: /* 0x1161970 */
+       return "gfs/gfs2";
++    case S_MAGIC_GPFS: /* 0x47504653 */
++      return "gpfs";
+     case S_MAGIC_HFS: /* 0x4244 */
+       return "hfs";
+     case S_MAGIC_HPFS: /* 0xF995E849 */
+@@ -304,6 +310,8 @@ human_fstype (STRUCT_STATVFS const *stat
+       return "minix v2 (30 char.)";
+     case S_MAGIC_MINIX_V3: /* 0x4D5A */
+       return "minix3";
++    case S_MAGIC_MQUEUE: /* 0x19800202 */
++      return "mqueue";
+     case S_MAGIC_MSDOS: /* 0x4D44 */
+       return "msdos";
+     case S_MAGIC_NCP: /* 0x564C */
+@@ -322,6 +330,8 @@ human_fstype (STRUCT_STATVFS const *stat
+       return "ocfs2";
+     case S_MAGIC_PROC: /* 0x9FA0 */
+       return "proc";
++    case S_MAGIC_PSTOREFS: /* 0x6165676C */
++      return "pstorefs";
+     case S_MAGIC_QNX4: /* 0x002F */
+       return "qnx4";
+     case S_MAGIC_RAMFS: /* 0x858458F6 */
+@@ -360,6 +370,8 @@ human_fstype (STRUCT_STATVFS const *stat
+       return "usbdevfs";
+     case S_MAGIC_VXFS: /* 0xA501FCF5 */
+       return "vxfs";
++    case S_MAGIC_V9FS: /* 0x01021997 */
++      return "v9fs";
+     case S_MAGIC_XENFS: /* 0xABBA1974 */
+       return "xenfs";
+     case S_MAGIC_XENIX: /* 0x012FF7B4 */
+diff -urNp coreutils-8.4-orig/src/tail.c coreutils-8.4/src/tail.c
+--- coreutils-8.4-orig/src/tail.c	2012-02-16 12:58:31.552634830 +0100
++++ coreutils-8.4/src/tail.c	2012-02-16 13:00:53.107510744 +0100
+@@ -898,6 +898,8 @@ fremote (int fd, const char *name)
+         case S_MAGIC_CODA:
+         case S_MAGIC_FUSEBLK:
+         case S_MAGIC_FUSECTL:
++        case S_MAGIC_FHGFS:
++        case S_MAGIC_GPFS:
+         case S_MAGIC_GFS:
+         case S_MAGIC_KAFS:
+         case S_MAGIC_LUSTRE:

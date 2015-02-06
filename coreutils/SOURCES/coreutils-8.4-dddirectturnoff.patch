@@ -1,0 +1,13 @@
+diff -urNp coreutils-8.4-orig/doc/coreutils.texi coreutils-8.4/doc/coreutils.texi
+--- coreutils-8.4-orig/doc/coreutils.texi	2011-02-02 14:47:18.193237465 +0100
++++ coreutils-8.4/doc/coreutils.texi	2011-02-02 14:49:14.552486170 +0100
+@@ -7909,6 +7909,9 @@ Note that the kernel may impose restrict
+ For example, with an ext4 destination file system and a linux-based kernel,
+ using @samp{oflag=direct} will cause writes to fail with @code{EINVAL} if the
+ output buffer size is not a multiple of 512.
++Note that this flag is turned off automatically when a partial block
++is written, which happens when reading from a pipe and not re-blocking.
++You can prevent that by using @samp{iflag=fullblock}.
+ 
+ @item directory
+ @opindex directory

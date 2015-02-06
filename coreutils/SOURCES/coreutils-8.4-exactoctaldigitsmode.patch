@@ -1,0 +1,132 @@
+diff -urNp coreutils-8.4-orig/doc/perm.texi coreutils-8.4/doc/perm.texi
+--- coreutils-8.4-orig/doc/perm.texi	2010-01-03 18:06:20.000000000 +0100
++++ coreutils-8.4/doc/perm.texi	2012-03-06 08:36:27.588558032 +0100
+@@ -496,7 +496,9 @@ alternative to giving a symbolic mode, y
+ number that represents the mode.
+ This number is always interpreted in octal; you do not have to add a
+ leading @samp{0}, as you do in C.  Mode @samp{0055} is the same as
+-mode @samp{55}.
++mode @samp{55}. However, adding leading zeros to create octal number with
++at least 5 digits means that this mode is taken explicitly - so could
++clear even the set-user-ID and set-group-ID bits of directories.
+ 
+ A numeric mode is usually shorter than the corresponding symbolic
+ mode, but it is limited in that normally it cannot take into account the
+@@ -560,8 +562,11 @@ bits of directories.  If commands like @
+ mechanisms would be less convenient and it would be harder to share
+ files.  Therefore, a command like @command{chmod} does not affect the
+ set-user-ID or set-group-ID bits of a directory unless the user
+-specifically mentions them in a symbolic mode, or sets them in
+-a numeric mode.  For example, on systems that support
++specifically mentions them in a symbolic mode, explicitly enforces the
++mode by at least 5 digits long octal mode, or when sets them in a numeric
++mode.
++
++For example, on systems that support
+ set-group-ID inheritance:
+ 
+ @example
+@@ -599,6 +604,16 @@ explicitly in a symbolic mode, e.g.:
+ chmod a-s D
+ @end example
+ 
++If you want force the chmod to change directory mode to exact numeric mode
++(clear the special bits), you could use at least 5 digit octal mode, e.g.:
++
++@example
++# This command tries to clear the set-user-ID
++# and set-group-ID bits of the directory D and set
++# its permissions to 0755.
++chmod 00755 D
++@end example
++
+ This behavior is a @acronym{GNU} extension.  Portable scripts should
+ not rely on requests to set or clear these bits on directories, as
+ @acronym{POSIX} allows implementations to ignore these requests.
+diff -urNp coreutils-8.4-orig/lib/modechange.c coreutils-8.4/lib/modechange.c
+--- coreutils-8.4-orig/lib/modechange.c	2010-01-04 17:19:05.000000000 +0100
++++ coreutils-8.4/lib/modechange.c	2012-03-06 08:33:43.972717496 +0100
+@@ -32,6 +32,7 @@
+ #include "stat-macros.h"
+ #include "xalloc.h"
+ #include <stdlib.h>
++#include <string.h>
+ 
+ /* The traditional octal values corresponding to each mode bit.  */
+ #define SUID 04000
+@@ -91,7 +92,11 @@ enum
+     /* Instead of the typical case, copy some existing permissions for
+        u, g, or o onto the other two.  Which of u, g, or o is copied
+        is determined by which bits are set in the `value' field.  */
+-    MODE_COPY_EXISTING
++    MODE_COPY_EXISTING,
++
++    /* Instead of the typical case, we want to enforce the exact
++       requested mode */
++    MODE_EXACT_CHANGE
+   };
+ 
+ /* Description of a mode change.  */
+@@ -140,6 +145,7 @@ mode_compile (char const *mode_string)
+   if ('0' <= *mode_string && *mode_string < '8')
+     {
+       unsigned int octal_mode = 0;
++      bool exact_change = (strlen(mode_string) > 4);
+       mode_t mode;
+       mode_t mentioned;
+ 
+@@ -156,7 +162,11 @@ mode_compile (char const *mode_string)
+ 
+       mode = octal_to_mode (octal_mode);
+       mentioned = (mode & (S_ISUID | S_ISGID)) | S_ISVTX | S_IRWXUGO;
+-      return make_node_op_equals (mode, mentioned);
++
++      mc = make_node_op_equals (mode, mentioned);
++      if (exact_change)
++        mc->flag = MODE_EXACT_CHANGE;
++      return mc;
+     }
+ 
+   /* Allocate enough space to hold the result.  */
+@@ -320,11 +330,13 @@ mode_adjust (mode_t oldmode, bool dir, m
+     {
+       mode_t affected = changes->affected;
+       mode_t omit_change =
+-        (dir ? S_ISUID | S_ISGID : 0) & ~ changes->mentioned;
++        ((dir && changes->flag != MODE_EXACT_CHANGE) ?
++          S_ISUID | S_ISGID : 0) & ~ changes->mentioned;
+       mode_t value = changes->value;
+ 
+       switch (changes->flag)
+         {
++        case MODE_EXACT_CHANGE:
+         case MODE_ORDINARY_CHANGE:
+           break;
+ 
+diff -urNp coreutils-8.4-orig/tests/chmod/setgid coreutils-8.4/tests/chmod/setgid
+--- coreutils-8.4-orig/tests/chmod/setgid	2010-01-03 18:06:20.000000000 +0100
++++ coreutils-8.4/tests/chmod/setgid	2012-03-06 08:36:44.806559631 +0100
+@@ -49,4 +49,23 @@ chmod 755 d
+ 
+ case `ls -ld d` in drwxr-sr-x*);; *) fail=1;; esac
+ 
++# make sure that it doesn't clear the special bits for 4 digit octal mode
++chmod 0755 d
++case `ls -ld d` in drwxr-sr-x*);; *) fail=1;; esac
++
++# make sure that it doesn't clear the special bits for 4 digit octal mode
++# with two leading zeros
++chmod 0055 d
++case `ls -ld d` in d---r-sr-x*);; *) fail=1;; esac
++
++# make sure that it clears the special bits for 5 digit octal mode with
++# leading zero
++chmod 00755 d
++case `ls -ld d` in drwxr-xr-x*);; *) fail=1;; esac
++
++# make sure that it clears the special bits even for more leading zeros
++# octal digits
++chmod 00000755 d
++case `ls -ld d` in drwxr-xr-x*);; *) fail=1;; esac
++
+ Exit $fail
