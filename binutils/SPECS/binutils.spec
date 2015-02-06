@@ -17,7 +17,7 @@
 Summary: A GNU collection of binary utilities
 Name: %{?cross}binutils%{?_with_debug:-debug}
 Version: 2.20.51.0.2
-Release: 5.36%{?dist}
+Release: 5.37%{?dist}
 License: GPLv3+
 Group: Development/Tools
 URL: http://sources.redhat.com/binutils
@@ -133,6 +133,9 @@ header files.  Only *.a libraries are included, because BFD doesn't
 have a stable ABI.  Developers starting new projects are strongly encouraged
 to consider using libelf instead of BFD.
 
+%define __os_install_post %{nil}
+%define debug_package %{nil}
+
 %prep
 %setup -q -n binutils-%{version}
 %patch01 -p0 -b .libtool-lib64~
@@ -217,7 +220,7 @@ touch */configure
 
 %build
 echo target is %{binutils_target}
-export CFLAGS="$RPM_OPT_FLAGS"
+export CFLAGS="$RPM_OPT_FLAGS -pg -g"
 CARGS=
 
 case %{binutils_target} in i?86*|sparc*|ppc*|s390*|sh*)
