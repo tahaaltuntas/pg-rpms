@@ -1,0 +1,12 @@
+diff -up diffutils-2.8.1/src/sdiff.c.sdiff-E diffutils-2.8.1/src/sdiff.c
+--- diffutils-2.8.1/src/sdiff.c.sdiff-E	2009-02-13 17:00:38.000000000 +0000
++++ diffutils-2.8.1/src/sdiff.c	2009-02-13 17:31:08.000000000 +0000
+@@ -464,7 +464,7 @@ main (int argc, char *argv[])
+   diffarg (DEFAULT_DIFF_PROGRAM);
+ 
+   /* parse command line args */
+-  while ((opt = getopt_long (argc, argv, "abBdHiI:lo:stvw:W", longopts, 0))
++  while ((opt = getopt_long (argc, argv, "abBdEHiI:lo:stvw:W", longopts, 0))
+ 	 != -1)
+     {
+       switch (opt)
