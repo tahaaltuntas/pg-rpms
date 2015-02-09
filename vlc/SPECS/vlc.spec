@@ -31,7 +31,7 @@
 Summary:	The cross-platform open-source multimedia framework, player and server
 Name:		vlc
 Version:	2.0.8
-Release:	3%{?dist}
+Release:	4%{?dist}
 License:	GPLv2+
 Group:		Applications/Multimedia
 URL:		http://www.videolan.org
@@ -220,6 +220,8 @@ Requires:	vlc-core%{_isa} = %{version}-%{release}
 %description plugin-jack
 JACK audio plugin for the VLC media player.
 
+%define __os_install_post %{nil}
+%define debug_package %{nil}
 
 %prep
 %setup -q -n %{name}-%{version}%{?vlc_rc}
@@ -241,6 +243,9 @@ rm aclocal.m4 m4/lib*.m4 m4/lt*.m4 || :
 
 
 %build
+
+export CFLAGS="-pg -g"
+export CXXFLAGS="-pg -g"
 
 
 %configure \
